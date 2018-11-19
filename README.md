@@ -1,8 +1,8 @@
-受lept_json项目启发，学习别人的C++版本实现
+1受lept_json项目启发，学习别人的C++版本实现
 
-## Day 2：2018/11/19
+## 2018/11/19
 
-完成了number的解析
+1. 完成了number的解析
 
 遇到的问题：
 
@@ -21,8 +21,17 @@ errno = 0;
 errno = 0;
 double n = strtod(p, nullptr);
 ```
+2. string除了unicode的解析
 
-## Day 1：2018/11/18
+切记！**每次switch加了一个case先加break**
+
+学到的点：
+
+- 匿名union
+- 手动调用析构函数
+- 如果对栈区的数据重新调用构造函数
+
+## 2018/11/18
 
 完成了基本的设计，完成了null和boolean（true/false）两种类型的解析。
 
