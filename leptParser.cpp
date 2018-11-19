@@ -1,8 +1,20 @@
 #include "leptParser.h"
+#include <cassert>
+#include <cerrno>
+#include <cmath>
+#include <cstdlib>
 namespace lept_json {
 	inline void expect(const char* &c, char ch) {
 		assert(*c == ch);
 		++c;
+	}
+
+	inline bool isdigit(char ch) {
+		return ch <= '9'&&ch >= '0';
+	}
+
+	inline bool isdigit1to9(char ch) {
+		return ch <= '9'&&ch >= '1';
 	}
 
 	Parser::Parser(Value & v, const std::string & json) :v(v), p(json.c_str()) {
@@ -28,41 +40,65 @@ namespace lept_json {
 		}
 	}
 
-	parse_status Parser::parse_null() noexcept {
-		expect(p, 'n');
-		if (p[0] != 'u' || p[1] != 'l' || p[2] != 'l')
-			return PARSE_INVALID_VALUE;
-		v.set_type(TYPE_NULL);
-		p += 3;
+	parse_status Parser::parse_literal(const std::string& literal, value_type type) noexcept
+	{
+		expect(p, literal[0]);
+		size_t i;
+		for(i=0;i<literal.size()-1;++i)
+			if (p[i] != literal[i+1])
+				return PARSE_INVALID_VALUE;
+		v.set_type(type);
+		p += literal.size()-1;
 		return PARSE_OK;
 	}
 
-	parse_status Parser::parse_true() noexcept	{
-		expect(p, 't');
-		if (p[0] != 'r' || p[1] != 'u' || p[2] != 'e')
-			return PARSE_INVALID_VALUE;
-		v.set_type(TYPE_TRUE);
-		p += 3;
-		return PARSE_OK;
-	}
-
-	parse_status Parser::parse_false() noexcept {
-		expect(p, 'f');
-		if (p[0] != 'a' || p[1] != 'l' || p[2] != 's' || p[3] != 'e')
-			return PARSE_INVALID_VALUE;
-		v.set_type(TYPE_FALSE);
-		p += 4;
+	parse_status Parser::parse_number() noexcept
+	{
+		const char* tmp = p;
+		if (*tmp == '-')
+			++tmp;
+		if (*tmp == '0')
+			++tmp;
+		else {
+			if (!isdigit1to9(*tmp))
+				return PARSE_INVALID_VALUE;
+			while (isdigit(*tmp))
+				++tmp;
+		}
+		if (*tmp == '.') {
+			++tmp;
+			if (!isdigit(*tmp))
+				return PARSE_INVALID_VALUE;
+			while (isdigit(*tmp))
+				++tmp;
+		}
+		if (*tmp == 'e' || *tmp == 'E') {
+			++tmp;
+			if (*tmp == '+' || *tmp == '-')
+				++tmp;
+			if (!isdigit(*tmp))
+				return PARSE_INVALID_VALUE;
+			while (isdigit(*tmp))
+				++tmp;
+		}
+		errno = 0;
+		double n = strtod(p, nullptr);
+		if (errno == ERANGE&&(n == HUGE_VAL || n == -HUGE_VAL))
+			return PARSE_NUMBER_TOO_BIG;
+		p = tmp;
+		v.set_type(TYPE_NUMBER);
+		v.set_number(n);
 		return PARSE_OK;
 	}
 
 	parse_status Parser::parse_value() noexcept {
 		switch (*p)
 		{
-		case 'n':return parse_null();
-		case 't':return parse_true();
-		case 'f':return parse_false();
+		case 'n':return parse_literal("null",TYPE_NULL);
+		case 't':return parse_literal("true", TYPE_TRUE);
+		case 'f':return parse_literal("false", TYPE_FALSE);
 		case '\0': return PAESE_EXPECT_VALUE;
-		default: return PARSE_INVALID_VALUE;
+		default: return parse_number();
 		}
 	}
 
