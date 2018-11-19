@@ -13,14 +13,23 @@ namespace lept_json {
 	};
 	class Value {
 	public:
+		Value();
+		~Value();
 		void parse(const std::string&);
 		lept_json::value_type get_type() const noexcept;
 		void set_type(lept_json::value_type) noexcept;
 		double get_number() noexcept;
 		void set_number(double) noexcept;
+		std::string get_string() noexcept;
+		void set_string(const std::string&) noexcept;
 	private:
 		value_type type = lept_json::TYPE_NULL;
-		double n;
+		union {
+			std::string s;
+			double n;
+		};
+		void free() noexcept;
+		
 	};
 }
 #endif // !LEPTVALUE_H

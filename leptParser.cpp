@@ -86,9 +86,48 @@ namespace lept_json {
 		if (errno == ERANGE&&(n == HUGE_VAL || n == -HUGE_VAL))
 			return PARSE_NUMBER_TOO_BIG;
 		p = tmp;
-		v.set_type(TYPE_NUMBER);
 		v.set_number(n);
 		return PARSE_OK;
+	}
+
+	parse_status Parser::parse_string() noexcept
+	{
+		expect(p, '"');
+		std::string s;
+		for (;;) {
+			char ch = *p++;
+			switch (ch)
+			{
+			case '"':
+				v.set_string(s);
+				return PARSE_OK;
+			case '\0':
+				return LEPT_PARSE_MISS_QUOTATION_MARK;
+			case '\\':
+				switch (*p++)
+				{
+				case '\"':s += '"'; break;
+				case '\\':s += '\\'; break;
+				case '/':s += '/'; break;
+				case 'b':s += '\b'; break;
+				case 'f':s += '\f'; break;
+				case 'n':s += '\n'; break;
+				case 'r':s += '\r'; break;
+				case 't':s += '\t'; break;
+				default:
+					return LEPT_PARSE_INVALID_STRING_ESCAPE;
+					break;
+				}
+				break;
+			default:
+				if (static_cast<unsigned char>(ch) < 0x20)
+					return LEPT_PARSE_INVALID_STRING_CHAR;
+				s += ch;
+				break;
+			}
+		}
+
+		
 	}
 
 	parse_status Parser::parse_value() noexcept {
@@ -97,6 +136,7 @@ namespace lept_json {
 		case 'n':return parse_literal("null",TYPE_NULL);
 		case 't':return parse_literal("true", TYPE_TRUE);
 		case 'f':return parse_literal("false", TYPE_FALSE);
+		case '"':return parse_string();
 		case '\0': return PAESE_EXPECT_VALUE;
 		default: return parse_number();
 		}

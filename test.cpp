@@ -61,11 +61,27 @@ static void test_parse_number() {
 	TEST_NUMBER(-1.7976931348623157e+308, "-1.7976931348623157e+308");
 }
 
+#define TEST_STRING(expect,json)\
+	do{\
+		Value v;\
+		EXPECT_NO_THROW(v.parse(json)); \
+		EXPECT_EQ(TYPE_STRING, v.get_type()); \
+		EXPECT_EQ(expect,v.get_string());\
+	}while(0)
+
+static void test_parse_string() {
+	TEST_STRING("", "\"\"");
+	TEST_STRING("Hello", "\"Hello\"");
+	TEST_STRING("Hello\nWorld", "\"Hello\\nWorld\"");
+	TEST_STRING("\" \\ / \b \f \n \r \t", "\"\\\" \\\\ \\/ \\b \\f \\n \\r \\t\"");
+}
+
 TEST(lept_json,parse_success) {
 	test_parse_null();
 	test_parse_true();
 	test_parse_false();
 	test_parse_number();
+	test_parse_string();
 }
 
 // type being catched must be parse_status other than int
@@ -118,11 +134,31 @@ static void test_parse_number_too_big() {
 	TEST_PARSE_ERROR(PARSE_NUMBER_TOO_BIG, "-1e309");
 }
 
+static void test_parse_missing_quotation_mark() {
+	TEST_PARSE_ERROR(LEPT_PARSE_MISS_QUOTATION_MARK, "\"");
+	TEST_PARSE_ERROR(LEPT_PARSE_MISS_QUOTATION_MARK, "\"abc");
+}
+
+static void test_parse_invalid_string_escape() {
+	TEST_PARSE_ERROR(LEPT_PARSE_INVALID_STRING_ESCAPE, "\"\\v\"");
+	TEST_PARSE_ERROR(LEPT_PARSE_INVALID_STRING_ESCAPE, "\"\\'\"");
+	TEST_PARSE_ERROR(LEPT_PARSE_INVALID_STRING_ESCAPE, "\"\\0\"");
+	TEST_PARSE_ERROR(LEPT_PARSE_INVALID_STRING_ESCAPE, "\"\\x12\"");
+}
+
+static void test_parse_invalid_string_char() {
+	TEST_PARSE_ERROR(LEPT_PARSE_INVALID_STRING_CHAR, "\"\x01\"");
+	TEST_PARSE_ERROR(LEPT_PARSE_INVALID_STRING_CHAR, "\"\x1F\"");
+}
+
 TEST(lept_json, parse_error) {
 	test_parse_expect_value();
 	test_parse_invalid_value();
 	test_parse_root_not_singular();
 	test_parse_number_too_big();
+	test_parse_missing_quotation_mark();
+	test_parse_invalid_string_escape();
+	test_parse_invalid_string_char();
 }
 
 int main(int args, char** argv) {
