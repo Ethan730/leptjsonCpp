@@ -90,10 +90,57 @@ namespace lept_json {
 		return PARSE_OK;
 	}
 
+	bool Parser::parse_hex4(unsigned& u) noexcept
+	{
+		u = 0;
+		for (int i = 0; i < 4; ++i) {
+			char ch = *p++;
+			u <<= 4;
+			if (ch >= '0'&&ch <= '9') {
+				u |= (ch - '0');
+			}
+			else if (ch >= 'a'&&ch <= 'f') {
+				u |= (ch - 'a' + 10);
+			}
+			else if (ch >= 'A'&&ch <= 'F') {
+				u |= (ch - 'A' + 10);
+			}
+			else
+				return false;
+		}
+		return true;
+	}
+
+	std::string Parser::encode_utf8(unsigned u) noexcept
+	{
+		assert(u >= 0x0000 && u <= 0x10FFFF);
+		std::string s;
+		if (u <= 0x007F) {
+			s += u;
+		}
+		else if (u <= 0x07FF) {
+			s += (0xC0 | ((u >> 6) & 0x1F));
+			s += (0x80 | (u & 0x3F));
+		}
+		else if (u <= 0xFFFF) {
+			s += (0xE0 | ((u >> 12) & 0x0F));
+			s += (0x80 | ((u >> 6) & 0x3F));
+			s += (0x80 | (u & 0x3F));
+		}
+		else {
+			s += (0xF0 | ((u >> 18) & 0x07));
+			s += (0x80 | ((u >> 12) & 0x3F));
+			s += (0x80 | ((u >> 6) & 0x3F));
+			s += (0x80 | (u & 0x3F));
+		}
+		return s;
+	}
+
 	parse_status Parser::parse_string() noexcept
 	{
 		expect(p, '"');
 		std::string s;
+		unsigned u1, u2;
 		for (;;) {
 			char ch = *p++;
 			switch (ch)
@@ -102,7 +149,7 @@ namespace lept_json {
 				v.set_string(s);
 				return PARSE_OK;
 			case '\0':
-				return LEPT_PARSE_MISS_QUOTATION_MARK;
+				return PARSE_MISS_QUOTATION_MARK;
 			case '\\':
 				switch (*p++)
 				{
@@ -114,14 +161,30 @@ namespace lept_json {
 				case 'n':s += '\n'; break;
 				case 'r':s += '\r'; break;
 				case 't':s += '\t'; break;
+				case 'u':
+					if (!parse_hex4(u1))
+						return PARSE_INVALID_UNICODE_HEX;
+					if (u1>=0xD800&&u1<=0xDBFF) {
+						if (*p++ != '\\')
+							return PARSE_INVALID_UNICODE_SURROGATE;
+						if (*p++ != 'u')
+							return PARSE_INVALID_UNICODE_SURROGATE;
+						if (!parse_hex4(u2))
+							return PARSE_INVALID_UNICODE_HEX;
+						if (u2 < 0xDC00 || u2>0xDFFF)
+							return PARSE_INVALID_UNICODE_SURROGATE;
+						u1 = 0x10000 + ((u1 - 0xD800) << 10) + (u2 - 0xDC00);
+					}
+					s += encode_utf8(u1);
+					break;
 				default:
-					return LEPT_PARSE_INVALID_STRING_ESCAPE;
+					return PARSE_INVALID_STRING_ESCAPE;
 					break;
 				}
 				break;
 			default:
 				if (static_cast<unsigned char>(ch) < 0x20)
-					return LEPT_PARSE_INVALID_STRING_CHAR;
+					return PARSE_INVALID_STRING_CHAR;
 				s += ch;
 				break;
 			}
