@@ -2,6 +2,7 @@
 #include "leptParser.h"
 #include "gtest\gtest.h"
 #include <iostream>
+#include "leptException.h"
 using namespace lept_json;
 
 static void test_parse_null(){
@@ -82,102 +83,157 @@ static void test_parse_string() {
 	TEST_STRING("\xF0\x9D\x84\x9E", "\"\\ud834\\udd1e\"");  /* G clef sign U+1D11E */
 }
 
+static void test_parse_array() {
+	Value v;
+	EXPECT_NO_THROW(v.parse("[ ]"));
+	EXPECT_EQ(TYPE_ARRAY, v.get_type());
+	EXPECT_EQ(0, v.get_array_size());
+
+	EXPECT_NO_THROW(v.parse("[ null , false , true , 123 , \"abc\" ]"));
+	EXPECT_EQ(TYPE_ARRAY, v.get_type());
+	EXPECT_EQ(5, v.get_array_size());
+	EXPECT_EQ(TYPE_NULL, v.get_array_element(0).get_type());
+	EXPECT_EQ(TYPE_FALSE,v.get_array_element(1).get_type());
+	EXPECT_EQ(TYPE_TRUE, v.get_array_element(2).get_type());
+	EXPECT_EQ(TYPE_NUMBER, v.get_array_element(3).get_type());
+	EXPECT_DOUBLE_EQ(123, v.get_array_element(3).get_number());
+	EXPECT_EQ(TYPE_STRING, v.get_array_element(4).get_type());
+	EXPECT_EQ("abc", v.get_array_element(4).get_string());
+
+	EXPECT_NO_THROW(v.parse("[ [ ] , [ 0 ] , [ 0 , 1 ] , [ 0 , 1 , 2 ] ]"));
+	EXPECT_EQ(TYPE_ARRAY, v.get_type());
+	EXPECT_EQ(4, v.get_array_size());
+	EXPECT_EQ(TYPE_ARRAY, v.get_array_element(0).get_type());
+	EXPECT_EQ(0, v.get_array_element(0).get_array_size());
+
+	EXPECT_EQ(TYPE_ARRAY, v.get_array_element(1).get_type());
+	EXPECT_EQ(1, v.get_array_element(1).get_array_size());
+
+	EXPECT_EQ(TYPE_ARRAY, v.get_array_element(2).get_type());
+	EXPECT_EQ(2, v.get_array_element(2).get_array_size());
+	
+	EXPECT_EQ(TYPE_ARRAY, v.get_array_element(3).get_type());
+	EXPECT_EQ(3, v.get_array_element(3).get_array_size());
+	EXPECT_DOUBLE_EQ(2, v.get_array_element(3).get_array_element(2).get_number());
+}
+
 TEST(lept_json,parse_success) {
 	test_parse_null();
 	test_parse_true();
 	test_parse_false();
 	test_parse_number();
 	test_parse_string();
+	test_parse_array();
 }
 
 // type being catched must be parse_status other than int
-#define TEST_PARSE_ERROR(errCode, json)  \
+#define TEST_PARSE_ERROR(errMsg, json)  \
 	do{\
 		Value v;\
-		EXPECT_ANY_THROW(v.parse(json));\
 		try {\
-			v.parse(json);\
+			EXPECT_ANY_THROW(v.parse(json)); \
 		}\
-		catch (parse_status err) {\
-			EXPECT_EQ(errCode, err); \
+		catch (jsonException err) {\
+			EXPECT_EQ(errMsg, err.what()); \
 			EXPECT_EQ(TYPE_NULL,v.get_type());\
 		}\
 	} while(0)
 
 static void test_parse_expect_value() {
-	TEST_PARSE_ERROR(PAESE_EXPECT_VALUE, "");
-	TEST_PARSE_ERROR(PAESE_EXPECT_VALUE, " ");
+	std::string errMsg = "expect value";
+	TEST_PARSE_ERROR(errMsg, "");
+	TEST_PARSE_ERROR(errMsg, " ");
 }
 
 static void test_parse_invalid_value() {
-	TEST_PARSE_ERROR(PARSE_INVALID_VALUE, "tru");
-	TEST_PARSE_ERROR(PARSE_INVALID_VALUE ,"??");
+	std::string errMsg = "invalid value";
+	TEST_PARSE_ERROR(errMsg, "tru");
+	TEST_PARSE_ERROR(errMsg,"??");
 
 	/*invalid number*/
-	TEST_PARSE_ERROR(PARSE_INVALID_VALUE, "+0");
-	TEST_PARSE_ERROR(PARSE_INVALID_VALUE, "+1");
-	TEST_PARSE_ERROR(PARSE_INVALID_VALUE, ".123"); /* at least one digit before '.' */
-	TEST_PARSE_ERROR(PARSE_INVALID_VALUE, "1.");   /* at least one digit after '.' */
-	TEST_PARSE_ERROR(PARSE_INVALID_VALUE, "INF");
-	TEST_PARSE_ERROR(PARSE_INVALID_VALUE, "inf");
-	TEST_PARSE_ERROR(PARSE_INVALID_VALUE, "NAN");
-	TEST_PARSE_ERROR(PARSE_INVALID_VALUE, "nan");
+	TEST_PARSE_ERROR(errMsg, "+0");
+	TEST_PARSE_ERROR(errMsg, "+1");
+	TEST_PARSE_ERROR(errMsg, ".123"); /* at least one digit before '.' */
+	TEST_PARSE_ERROR(errMsg, "1.");   /* at least one digit after '.' */
+	TEST_PARSE_ERROR(errMsg, "INF");
+	TEST_PARSE_ERROR(errMsg, "inf");
+	TEST_PARSE_ERROR(errMsg, "NAN");
+	TEST_PARSE_ERROR(errMsg, "nan");
+
+	/*invalid value in array*/
+	TEST_PARSE_ERROR(errMsg, "[1,]");
+	TEST_PARSE_ERROR(errMsg, "[\"a\", nul]");
 }
 
 static void test_parse_root_not_singular() {
-	TEST_PARSE_ERROR(PARSE_ROOT_NOT_SINGULAR, "null x");
-	TEST_PARSE_ERROR(PARSE_ROOT_NOT_SINGULAR, "\ttrue x");
-	TEST_PARSE_ERROR(PARSE_ROOT_NOT_SINGULAR, "trued");
+	std::string errMsg = "root not singular";
+	TEST_PARSE_ERROR(errMsg, "null x");
+	TEST_PARSE_ERROR(errMsg, "\ttrue x");
+	TEST_PARSE_ERROR(errMsg, "trued");
 
 	/* invalid number */
-	TEST_PARSE_ERROR(PARSE_ROOT_NOT_SINGULAR, "0123"); /* after zero should be '.' or nothing */
-	TEST_PARSE_ERROR(PARSE_ROOT_NOT_SINGULAR, "0x0");
-	TEST_PARSE_ERROR(PARSE_ROOT_NOT_SINGULAR, "0x123");
+	TEST_PARSE_ERROR(errMsg, "0123"); /* after zero should be '.' or nothing */
+	TEST_PARSE_ERROR(errMsg, "0x0");
+	TEST_PARSE_ERROR(errMsg, "0x123");
 }
 
 static void test_parse_number_too_big() {
-	TEST_PARSE_ERROR(PARSE_NUMBER_TOO_BIG, "1e309");
-	TEST_PARSE_ERROR(PARSE_NUMBER_TOO_BIG, "-1e309");
+	std::string errMsg = "number is too big";
+	TEST_PARSE_ERROR(errMsg, "1e309");
+	TEST_PARSE_ERROR(errMsg, "-1e309");
 }
 
 static void test_parse_missing_quotation_mark() {
-	TEST_PARSE_ERROR(PARSE_MISS_QUOTATION_MARK, "\"");
-	TEST_PARSE_ERROR(PARSE_MISS_QUOTATION_MARK, "\"abc");
+	std::string errMsg = "miss quotation mark";
+	TEST_PARSE_ERROR(errMsg, "\"");
+	TEST_PARSE_ERROR(errMsg, "\"abc");
 }
 
 static void test_parse_invalid_string_escape() {
-	TEST_PARSE_ERROR(PARSE_INVALID_STRING_ESCAPE, "\"\\v\"");
-	TEST_PARSE_ERROR(PARSE_INVALID_STRING_ESCAPE, "\"\\'\"");
-	TEST_PARSE_ERROR(PARSE_INVALID_STRING_ESCAPE, "\"\\0\"");
-	TEST_PARSE_ERROR(PARSE_INVALID_STRING_ESCAPE, "\"\\x12\"");
+	std::string errMsg = "invalid string escape";
+	TEST_PARSE_ERROR(errMsg, "\"\\v\"");
+	TEST_PARSE_ERROR(errMsg, "\"\\'\"");
+	TEST_PARSE_ERROR(errMsg, "\"\\0\"");
+	TEST_PARSE_ERROR(errMsg, "\"\\x12\"");
 }
 
 static void test_parse_invalid_string_char() {
-	TEST_PARSE_ERROR(PARSE_INVALID_STRING_CHAR, "\"\x01\"");
-	TEST_PARSE_ERROR(PARSE_INVALID_STRING_CHAR, "\"\x1F\"");
+	std::string errMsg = "invalid string char";
+	TEST_PARSE_ERROR(errMsg, "\"\x01\"");
+	TEST_PARSE_ERROR(errMsg, "\"\x1F\"");
 }
 
 static void test_parse_invalid_unicode_hex() {
-	TEST_PARSE_ERROR(PARSE_INVALID_UNICODE_HEX, "\"\\u\"");
-	TEST_PARSE_ERROR(PARSE_INVALID_UNICODE_HEX, "\"\\u0\"");
-	TEST_PARSE_ERROR(PARSE_INVALID_UNICODE_HEX, "\"\\u01\"");
-	TEST_PARSE_ERROR(PARSE_INVALID_UNICODE_HEX, "\"\\u012\"");
-	TEST_PARSE_ERROR(PARSE_INVALID_UNICODE_HEX, "\"\\u/000\"");
-	TEST_PARSE_ERROR(PARSE_INVALID_UNICODE_HEX, "\"\\uG000\"");
-	TEST_PARSE_ERROR(PARSE_INVALID_UNICODE_HEX, "\"\\u0/00\"");
-	TEST_PARSE_ERROR(PARSE_INVALID_UNICODE_HEX, "\"\\u0G00\"");
-	TEST_PARSE_ERROR(PARSE_INVALID_UNICODE_HEX, "\"\\u0/00\"");
-	TEST_PARSE_ERROR(PARSE_INVALID_UNICODE_HEX, "\"\\u00G0\"");
-	TEST_PARSE_ERROR(PARSE_INVALID_UNICODE_HEX, "\"\\u000/\"");
-	TEST_PARSE_ERROR(PARSE_INVALID_UNICODE_HEX, "\"\\u000G\"");
+	std::string errMsg = "invalid unicode hex";
+	TEST_PARSE_ERROR(errMsg, "\"\\u\"");
+	TEST_PARSE_ERROR(errMsg, "\"\\u0\"");
+	TEST_PARSE_ERROR(errMsg, "\"\\u01\"");
+	TEST_PARSE_ERROR(errMsg, "\"\\u012\"");
+	TEST_PARSE_ERROR(errMsg, "\"\\u/000\"");
+	TEST_PARSE_ERROR(errMsg, "\"\\uG000\"");
+	TEST_PARSE_ERROR(errMsg, "\"\\u0/00\"");
+	TEST_PARSE_ERROR(errMsg, "\"\\u0G00\"");
+	TEST_PARSE_ERROR(errMsg, "\"\\u0/00\"");
+	TEST_PARSE_ERROR(errMsg, "\"\\u00G0\"");
+	TEST_PARSE_ERROR(errMsg, "\"\\u000/\"");
+	TEST_PARSE_ERROR(errMsg, "\"\\u000G\"");
 }
 
 static void test_parse_invalid_unicode_surrogate() {
-	TEST_PARSE_ERROR(PARSE_INVALID_UNICODE_SURROGATE, "\"\\uD800\"");
-	TEST_PARSE_ERROR(PARSE_INVALID_UNICODE_SURROGATE, "\"\\uDBFF\"");
-	TEST_PARSE_ERROR(PARSE_INVALID_UNICODE_SURROGATE, "\"\\uD800\\\\\"");
-	TEST_PARSE_ERROR(PARSE_INVALID_UNICODE_SURROGATE, "\"\\uD800\\uDBFF\"");
-	TEST_PARSE_ERROR(PARSE_INVALID_UNICODE_SURROGATE, "\"\\uD800\\uE000\"");
+	std::string errMsg = "invalid unicode surrogate";
+	TEST_PARSE_ERROR(errMsg, "\"\\uD800\"");
+	TEST_PARSE_ERROR(errMsg, "\"\\uDBFF\"");
+	TEST_PARSE_ERROR(errMsg, "\"\\uD800\\\\\"");
+	TEST_PARSE_ERROR(errMsg, "\"\\uD800\\uDBFF\"");
+	TEST_PARSE_ERROR(errMsg, "\"\\uD800\\uE000\"");
+}
+
+static void test_parse_miss_comma_or_square_bracket() {
+	std::string errMsg = "miss comma or square bracket";
+	TEST_PARSE_ERROR(errMsg, "[1");
+	TEST_PARSE_ERROR(errMsg, "[1}");
+	TEST_PARSE_ERROR(errMsg, "[1 2");
+	TEST_PARSE_ERROR(errMsg, "[[]");
 }
 
 TEST(lept_json, parse_error) {
@@ -190,8 +246,23 @@ TEST(lept_json, parse_error) {
 	test_parse_invalid_string_char();
 	test_parse_invalid_unicode_hex();
 	test_parse_invalid_unicode_surrogate();
+	test_parse_miss_comma_or_square_bracket();
 }
 
+static void test_copy() {
+	Value v;
+	v.parse("\"1abcc\"");
+	Value tmp(v);
+	EXPECT_EQ(TYPE_STRING, tmp.get_type());
+	Value tmp2;
+	tmp2.parse("[]");
+	tmp2 = v;
+	EXPECT_EQ(TYPE_STRING, tmp2.get_type());
+}
+
+TEST(lept_json, copy) {
+	test_copy();
+}
 int main(int args, char** argv) {
 	testing::InitGoogleTest(&args, argv);
 	return RUN_ALL_TESTS();
