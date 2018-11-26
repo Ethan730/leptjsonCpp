@@ -117,6 +117,62 @@ static void test_parse_array() {
 	EXPECT_DOUBLE_EQ(2, v.get_array_element(3).get_array_element(2).get_number());
 }
 
+static void test_parse_object() {
+	Value v;
+	EXPECT_NO_THROW(v.parse(" { } "));
+	EXPECT_EQ(TYPE_OBJECT, v.get_type());
+	EXPECT_EQ(0, v.get_object_size());
+
+	EXPECT_NO_THROW(v.parse(
+		"{ "
+        "\"n\" : null , "
+        "\"f\" : false , "
+        "\"t\" : true , "
+        "\"i\" : 123 , "
+        "\"s\" : \"abc\", "
+        "\"a\" : [ 1, 2, 3 ],"
+        "\"o\" : { \"1\" : 1, \"2\" : 2, \"3\" : 3 }"
+        " } "
+	));
+	EXPECT_EQ(TYPE_OBJECT, v.get_type());
+	EXPECT_EQ(7, v.get_object_size());
+
+	EXPECT_EQ("n", v.get_object_key(0));
+	EXPECT_EQ(TYPE_NULL, v.get_object_value(0).get_type());
+
+	EXPECT_EQ("f", v.get_object_key(1));
+	EXPECT_EQ(TYPE_FALSE, v.get_object_value(1).get_type());
+	
+	EXPECT_EQ("t", v.get_object_key(2));
+	EXPECT_EQ(TYPE_TRUE, v.get_object_value(2).get_type());
+
+	EXPECT_EQ("i", v.get_object_key(3));
+	EXPECT_EQ(TYPE_NUMBER, v.get_object_value(3).get_type());
+	EXPECT_DOUBLE_EQ(123.0, v.get_object_value(3).get_number());
+	
+	EXPECT_EQ("s", v.get_object_key(4));
+	EXPECT_EQ(TYPE_STRING, v.get_object_value(4).get_type());
+	EXPECT_EQ("abc", v.get_object_value(4).get_string());
+
+	EXPECT_EQ("a", v.get_object_key(5));
+	EXPECT_EQ(TYPE_ARRAY, v.get_object_value(5).get_type());
+	EXPECT_EQ(3, v.get_object_value(5).get_array_size());
+	for (std::size_t i = 0; i < 3; ++i) {
+		EXPECT_EQ(TYPE_NUMBER, v.get_object_value(5).get_array_element(i).get_type());
+		EXPECT_EQ(i + 1.0, v.get_object_value(5).get_array_element(i).get_number());
+	}
+
+	EXPECT_EQ("o", v.get_object_key(6));
+	EXPECT_EQ(TYPE_OBJECT, v.get_object_value(6).get_type());
+	Value tmp = v.get_object_value(6);
+	EXPECT_EQ(TYPE_OBJECT, tmp.get_type());
+	for (std::size_t i = 0; i < 3; ++i) {
+		EXPECT_EQ(std::string(1, static_cast<char>(i + '1')), tmp.get_object_key(i));
+		EXPECT_EQ(TYPE_NUMBER, tmp.get_object_value(i).get_type());
+		EXPECT_EQ(i + 1.0, tmp.get_object_value(i).get_number());
+	}
+}
+
 TEST(lept_json,parse_success) {
 	test_parse_null();
 	test_parse_true();
@@ -124,6 +180,7 @@ TEST(lept_json,parse_success) {
 	test_parse_number();
 	test_parse_string();
 	test_parse_array();
+	test_parse_object();
 }
 
 // type being catched must be parse_status other than int
@@ -236,6 +293,32 @@ static void test_parse_miss_comma_or_square_bracket() {
 	TEST_PARSE_ERROR(errMsg, "[[]");
 }
 
+static void test_parse_miss_key() {
+	std::string errMsg = "miss key";
+	TEST_PARSE_ERROR(errMsg, "{:1,");
+	TEST_PARSE_ERROR(errMsg, "{1:1,");
+	TEST_PARSE_ERROR(errMsg, "{true:1,");
+	TEST_PARSE_ERROR(errMsg, "{false:1,");
+	TEST_PARSE_ERROR(errMsg, "{null:1,");
+	TEST_PARSE_ERROR(errMsg, "{[]:1,");
+	TEST_PARSE_ERROR(errMsg, "{{}:1,");
+	TEST_PARSE_ERROR(errMsg, "{\"a\":1,");
+}
+
+static void test_parse_miss_colon() {
+	std::string errMsg = "miss colon";
+	TEST_PARSE_ERROR(errMsg, "{\"a\"}");
+	TEST_PARSE_ERROR(errMsg, "{\"a\",\"b\"}");
+}
+
+static void test_parse_miss_comma_or_curly_bracket() {
+	std::string errMsg = "miss comma or curly bracket";
+	TEST_PARSE_ERROR(errMsg, "{\"a\":1");
+	TEST_PARSE_ERROR(errMsg, "{\"a\":1]");
+	TEST_PARSE_ERROR(errMsg, "{\"a\":1 \"b\"");
+	TEST_PARSE_ERROR(errMsg, "{\"a\":{}");
+}
+
 TEST(lept_json, parse_error) {
 	test_parse_expect_value();
 	test_parse_invalid_value();
@@ -247,6 +330,9 @@ TEST(lept_json, parse_error) {
 	test_parse_invalid_unicode_hex();
 	test_parse_invalid_unicode_surrogate();
 	test_parse_miss_comma_or_square_bracket();
+	test_parse_miss_key();
+	test_parse_miss_colon();
+	test_parse_miss_comma_or_curly_bracket();
 }
 
 static void test_copy() {
