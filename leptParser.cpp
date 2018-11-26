@@ -127,7 +127,7 @@ namespace lept_json {
 		return s;
 	}
 
-	void Parser::parse_string()
+	void Parser::parse_string_raw(std::string &res)
 	{
 		expect(p, '"');
 		std::string s;
@@ -137,7 +137,7 @@ namespace lept_json {
 			switch (ch)
 			{
 			case '"':
-				v.set_string(s);
+				res = s;
 				return;
 			case '\0':
 				throw jsonException("miss quotation mark");
@@ -155,7 +155,7 @@ namespace lept_json {
 				case 'u':
 					if (!parse_hex4(u1))
 						throw jsonException("invalid unicode hex");
-					if (u1>=0xD800&&u1<=0xDBFF) {
+					if (u1 >= 0xD800 && u1 <= 0xDBFF) {
 						if (*p++ != '\\')
 							throw jsonException("invalid unicode surrogate");
 						if (*p++ != 'u')
@@ -180,8 +180,18 @@ namespace lept_json {
 				break;
 			}
 		}
+	}
 
-		
+	void Parser::parse_string()
+	{
+		std::string res;
+		try {
+			parse_string_raw(res);
+		}
+		catch (jsonException e) {
+			throw;
+		}
+		v.set_string(res);
 	}
 
 	void Parser::parse_array()
@@ -217,16 +227,68 @@ namespace lept_json {
 		}
 	}
 
+	void Parser::parse_object()
+	{
+		expect(p, '{');
+		parse_whitespace();
+		std::vector<Member> o;
+		if (*p == '}') {
+			v.set_object(o);
+			++p;
+			return;
+		}
+		for (;;) {
+			Member m;
+			std::string res;
+			if (*p != '"')
+				throw jsonException("miss key");
+			try {
+				parse_string_raw(res);
+			}
+			catch (jsonException e) {
+				throw;
+			}
+			m.set_key(res);
+			parse_whitespace();
+			if (*p != ':') {
+				throw jsonException("miss colon");
+			}
+			++p;
+			parse_whitespace();
+			try {
+				parse_value();
+			}
+			catch(jsonException e){
+				throw;
+			}
+			m.set_value(this->v);
+			o.push_back(m);
+			parse_whitespace();
+			if (*p == ',') {
+				++p;
+				parse_whitespace();
+			}
+			else if (*p == '}') {
+				v.set_object(o);
+				++p;
+				return;
+			}
+			else
+				throw jsonException("miss comma or curly bracket");
+		}
+	}
+
 	void Parser::parse_value() {
 		switch (*p)
 		{
-		case 'n':return parse_literal("null",TYPE_NULL);
-		case 't':return parse_literal("true", TYPE_TRUE);
-		case 'f':return parse_literal("false", TYPE_FALSE);
-		case '"':return parse_string();
-		case '[':return parse_array();
+		case 'n': parse_literal("null", TYPE_NULL); break;
+		case 't': parse_literal("true", TYPE_TRUE); break;
+		case 'f': parse_literal("false", TYPE_FALSE); break;
+		case '"': parse_string(); break;
+		case '[': parse_array(); break;
+		case '{': parse_object(); break;
 		case '\0': throw jsonException("expect value");
-		default: return parse_number();
+		default: parse_number(); break;
 		}
 	}
 

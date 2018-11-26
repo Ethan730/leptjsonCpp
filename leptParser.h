@@ -13,8 +13,10 @@ namespace lept_json {
 
 		bool parse_hex4(unsigned&) noexcept;
 		std::string encode_utf8(unsigned) noexcept;
+		void parse_string_raw(std::string&);
 		void parse_string();
 		void parse_array();
+		void parse_object();
 		void parse_value();
 		
 		const char *p;
