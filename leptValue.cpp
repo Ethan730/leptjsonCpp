@@ -1,6 +1,7 @@
 #include "leptValue.h"
 #include "leptParser.h"
 #include <cassert>
+#include <cstdio>
 namespace lept_json {
 	Value::Value() :type(TYPE_NULL) {}
 
@@ -56,6 +57,77 @@ namespace lept_json {
 
 	void Value::parse(const std::string & json) {
 		Parser(*this, json);
+	}
+
+	std::string Value::stringify_string(const std::string& s) const noexcept {
+		std::string res="\"";
+		for (unsigned char c : s) {
+			switch (c)
+			{
+			case '\"':res += "\\\""; break;
+			case '\\':res += "\\\\"; break;
+			case '/':res += "\\/"; break;
+			case '\b':res += "\\b"; break;
+			case '\f':res += "\\f"; break;
+			case '\n':res += "\\n"; break;
+			case '\r':res += "\\r"; break;
+			case '\t':res += "\\t"; break;
+			default:
+				if (c < 0x20) {
+					char buffer[7];
+					sprintf_s(buffer, "\\u%04X", c);
+					res += buffer;
+				}
+				else
+					res += c;
+				break;
+			}
+		}
+		res += '"';
+		return res;
+	}
+
+	std::string Value::stringify_value() const noexcept
+	{
+		std::string res;
+		switch (this->type)
+		{
+		case TYPE_NULL: res = "null"; break;
+		case TYPE_TRUE:res = "true"; break;
+		case TYPE_FALSE:res = "false"; break;
+		case TYPE_NUMBER:
+			char num[32];
+			sprintf_s(num, "%.17g", this->n);
+			res = num;
+			break;
+		case TYPE_STRING:res = stringify_string(this->s); break;
+		case TYPE_ARRAY:
+			res = "[";
+			for (std::size_t i = 0; i < this->a.size(); ++i) {
+				if (i > 0)
+					res += ",";
+				res += this->a[i].stringify();
+			}
+			res += "]";
+			break;
+		case TYPE_OBJECT:
+			res = "{";
+			for (std::size_t i = 0; i < this->o.size(); ++i) {
+				if (i > 0)
+					res += ",";
+				res += stringify_string(this->o[i].get_key());
+				res += ":";
+				res += this->o[i].get_value().stringify_value();
+			}
+			res += "}";
+			break;
+		}
+		return res;
+	}
+
+	std::string Value::stringify() const noexcept
+	{
+		return stringify_value();
 	}
 
 	value_type Value::get_type() const noexcept {

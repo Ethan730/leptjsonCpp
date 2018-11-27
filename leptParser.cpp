@@ -2,7 +2,6 @@
 #include <cassert>
 #include <cerrno>
 #include <cmath>
-#include <cstdlib>
 #include "leptException.h"
 namespace lept_json {
 	inline void expect(const char* &c, char ch) {

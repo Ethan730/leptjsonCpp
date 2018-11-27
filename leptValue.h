@@ -22,6 +22,11 @@ namespace lept_json {
 		Value& operator=(const Value&);
 
 		void parse(const std::string&);
+	private:
+		std::string stringify_string(const std::string& s) const noexcept;
+		std::string stringify_value() const noexcept;
+	public:
+		std::string stringify() const noexcept;
 
 		lept_json::value_type get_type() const noexcept;
 		
