@@ -2,7 +2,7 @@
 #include "leptParser.h"
 #include <cassert>
 #include <cstdio>
-namespace lept_json {
+namespace jsonCpp {
 	Value::Value() :type(TYPE_NULL) {}
 
 	Value::~Value() {
@@ -258,5 +258,50 @@ namespace lept_json {
 	void Member::set_value(const Value &v) noexcept
 	{
 		this->v = v;
+	}
+
+	bool operator==(const Value & v1, const Value & v2)
+	{
+		if (v1.type != v2.type) return false;
+		switch (v1.type)
+		{
+		case TYPE_NUMBER:
+			return v1.n == v2.n;
+		case TYPE_STRING:
+			return v1.s == v2.s;
+		case TYPE_ARRAY:
+			if (v1.a.size() != v2.a.size()) return false;
+			for (std::size_t i = 0; i < v1.a.size(); ++i) {
+				if (v1.a[i] != v2.a[i])
+					return false;
+			}
+			return true;
+		case TYPE_OBJECT:
+			if (v1.o.size() != v2.o.size()) return false;
+			for (std::size_t i = 0; i < v1.o.size(); ++i) {
+				const Value* tmp = v2.find_object_value(v1.o[i].get_key());
+				if (!tmp)
+					return false;
+				if (*tmp != v1.o[i].get_value())
+					return false;
+			}
+			return true;
+		default:
+			return true;
+		}
+	}
+
+	bool operator!=(const Value & v1, const Value & v2)
+	{
+		return !operator==(v1, v2);
+	}
+
+	const Value* Value::find_object_value(const std::string &key) const noexcept
+	{
+		for (std::size_t i = 0; i < this->o.size(); ++i) {
+			if (this->o[i].get_key() == key)
+				return &this->o[i].get_value();
+		}
+		return nullptr;
 	}
 }

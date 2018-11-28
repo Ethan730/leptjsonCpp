@@ -2,7 +2,7 @@
 #define LEPTVALUE_H
 #include <string>
 #include <vector>
-namespace lept_json {
+namespace jsonCpp {
 	enum value_type :int {
 		TYPE_NULL,
 		TYPE_TRUE,
@@ -28,9 +28,9 @@ namespace lept_json {
 	public:
 		std::string stringify() const noexcept;
 
-		lept_json::value_type get_type() const noexcept;
+		value_type get_type() const noexcept;
 		
-		void set_literal_type(lept_json::value_type) noexcept;
+		void set_literal_type(value_type) noexcept;
 
 		double get_number() const noexcept;
 		void set_number(double) noexcept;
@@ -46,8 +46,12 @@ namespace lept_json {
 		std::string get_object_key(std::size_t) const noexcept;
 		const Value& get_object_value(std::size_t) const noexcept;
 		void set_object(const std::vector<Member>&) noexcept;
+
+		friend bool operator==(const Value& v1, const Value& v2);
+		friend bool operator!=(const Value& v1, const Value& v2);
+		const Value* find_object_value(const std::string&) const noexcept;
 	private:
-		value_type type = lept_json::TYPE_NULL;
+		value_type type = TYPE_NULL;
 		union {
 			std::vector<Member> o;
 			std::vector<Value> a;

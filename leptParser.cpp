@@ -3,7 +3,7 @@
 #include <cerrno>
 #include <cmath>
 #include "leptException.h"
-namespace lept_json {
+namespace jsonCpp {
 	inline void expect(const char* &c, char ch) {
 		assert(*c == ch);
 		++c;

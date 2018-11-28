@@ -2,7 +2,7 @@
 #define LEPTPARSER_H
 #include "leptValue.h"
 
-namespace lept_json {
+namespace jsonCpp {
 	class Parser final {
 	public:
 		Parser(Value& v,const std::string& json);
