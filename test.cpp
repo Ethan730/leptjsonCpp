@@ -3,7 +3,7 @@
 #include "gtest\gtest.h"
 #include <iostream>
 #include "leptException.h"
-using namespace lept_json;
+using namespace jsonCpp;
 
 static void test_parse_null(){
 	Value v;
@@ -173,7 +173,7 @@ static void test_parse_object() {
 	}
 }
 
-TEST(lept_json,parse_success) {
+TEST(jsonCpp,parse_success) {
 	test_parse_null();
 	test_parse_true();
 	test_parse_false();
@@ -319,7 +319,7 @@ static void test_parse_miss_comma_or_curly_bracket() {
 	TEST_PARSE_ERROR(errMsg, "{\"a\":{}");
 }
 
-TEST(lept_json, parse_error) {
+TEST(jsonCpp, parse_error) {
 	test_parse_expect_value();
 	test_parse_invalid_value();
 	test_parse_root_not_singular();
@@ -346,7 +346,7 @@ static void test_copy() {
 	EXPECT_EQ(TYPE_STRING, tmp2.get_type());
 }
 
-TEST(lept_json, copy) {
+TEST(jsonCpp, copy) {
 	test_copy();
 }
 
@@ -356,7 +356,7 @@ TEST(lept_json, copy) {
 		EXPECT_NO_THROW(v.parse(json));\
 		std::string stringifyRes=v.stringify();\
 		EXPECT_EQ(stringifyRes,json);\
-	} while(0)\
+	} while(0)
 
 static void test_stringify_number() {
 	TEST_ROUNDTRIP("0");
@@ -399,7 +399,26 @@ static void test_stringify_object() {
 	TEST_ROUNDTRIP("{\"n\":null,\"f\":false,\"t\":true,\"i\":123,\"s\":\"abc\",\"a\":[1,2,3],\"o\":{\"1\":1,\"2\":2,\"3\":3}}");
 }
 
-TEST(lept_json, stringify) {
+
+#define TEST_PARSE_STRINGIFY_PARSE(json)\
+	do{\
+		Value v;\
+		v.parse(json);\
+		std::string stringifyRes = v.stringify(); \
+		Value v2;\
+		v2.parse(stringifyRes);\
+		EXPECT_EQ(v, v2);\
+	}while(0)
+
+static void test_parse_and_stringify_and_parse() {
+	TEST_PARSE_STRINGIFY_PARSE("true");
+	TEST_PARSE_STRINGIFY_PARSE("false");
+	TEST_PARSE_STRINGIFY_PARSE("123");
+	TEST_PARSE_STRINGIFY_PARSE("\"Hello\\nWorld\"");
+	TEST_PARSE_STRINGIFY_PARSE("[null,false,true,123,\"abc\",[1,2,3]]");
+}
+
+TEST(jsonCpp, roundtrip) {
 	TEST_ROUNDTRIP("null");
 	TEST_ROUNDTRIP("false");
 	TEST_ROUNDTRIP("true");
@@ -407,9 +426,72 @@ TEST(lept_json, stringify) {
 	test_stringify_string();
 	test_stringify_array();
 	test_stringify_object();
+	test_parse_and_stringify_and_parse();
 }
 
+#define TEST_EQUAL(json1,json2)\
+	do{\
+		Value v1,v2;\
+		v1.parse(json1);\
+		v2.parse(json2);\
+		EXPECT_EQ(v1,v2);\
+	}while(0)
+
+static void test_equal() {
+	TEST_EQUAL("true", "true");
+	TEST_EQUAL("false", "false");
+	TEST_EQUAL("null", "null");
+	TEST_EQUAL("123", "123");
+	TEST_EQUAL("\"abc\"", "\"abc\"");
+	TEST_EQUAL("[]", "[]");
+	TEST_EQUAL("[1,2,3]", "[1,2,3]");
+	TEST_EQUAL("[[]]", "[[]]");
+	TEST_EQUAL("{}", "{}");
+	TEST_EQUAL("{\"a\":1,\"b\":2}", "{\"a\":1,\"b\":2}");
+	TEST_EQUAL("{\"a\":1,\"b\":2}", "{\"b\":2,\"a\":1}");
+	TEST_EQUAL("{\"a\":{\"b\":{\"c\":{}}}}", "{\"a\":{\"b\":{\"c\":{}}}}");
+}
+
+#define TEST_NOT_EQUAL(json1,json2)\
+	do{\
+		Value v1,v2;\
+		v1.parse(json1);\
+		v2.parse(json2);\
+		EXPECT_NE(v1,v2);\
+	}while(0)
+
+static void test_not_equal() {
+	TEST_NOT_EQUAL("true", "false");
+	TEST_NOT_EQUAL("null", "0");
+	TEST_NOT_EQUAL("123", "456");
+	TEST_NOT_EQUAL("\"abc\"", "\"abcd\"");
+	TEST_NOT_EQUAL("[]", "null");
+	TEST_NOT_EQUAL("[1,2,3]", "[1,2,3,4]");
+	TEST_NOT_EQUAL("{}", "null");
+	TEST_NOT_EQUAL("{}", "[]");
+	TEST_NOT_EQUAL("{\"a\":1,\"b\":2}", "{\"a\":1,\"b\":3}");
+	TEST_NOT_EQUAL("{\"a\":1,\"b\":2}", "{\"a\":1,\"b\":2,\"c\":3}");
+	TEST_NOT_EQUAL("{\"a\":{\"b\":{\"c\":{}}}}", "{\"a\":{\"b\":{\"c\":[]}}}");
+
+}
+
+TEST(jsonCpp, equal) {
+	test_equal();
+	test_not_equal();
+}
+
+TEST(jsonCpp, swap) {
+	Value v1, v2;
+	v1.parse("true");
+	v2.parse("123");
+	std::swap(v1, v2);
+	EXPECT_EQ(TYPE_NUMBER, v1.get_type());
+	EXPECT_EQ(TYPE_TRUE, v2.get_type());
+	EXPECT_DOUBLE_EQ(123.0, v1.get_number());
+}
 int main(int args, char** argv) {
+
+
 	testing::InitGoogleTest(&args, argv);
 	return RUN_ALL_TESTS();
 }
