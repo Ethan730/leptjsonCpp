@@ -1,5 +1,14 @@
 受lept_json项目启发，学习别人的C++版本实现
 
+## 2018/12/04
+
+尝试了把项目迁移到Linux，并修复了几个bug。
+
+- unionFree()里忘记写break，不知道为什么windows下还能跑通
+- sprintf_s在Linux库中没有，换成了sprintf
+
+最近Linux看到人头大，任重而道远啊，加油，打算改改简历？
+
 ## 2018/11/28
 
 完成了比较操作符operator==和operator!=
