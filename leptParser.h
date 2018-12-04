@@ -19,8 +19,8 @@ namespace jsonCpp {
 		void parse_object();
 		void parse_value();
 		
-		const char *p;
 		Value &v;
+		const char *p;
 	};
 }
 #endif // !LEPTPARSER_H

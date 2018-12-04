@@ -1,6 +1,6 @@
 #include "leptValue.h"
 #include "leptParser.h"
-#include "gtest\gtest.h"
+#include <gtest/gtest.h>
 #include <iostream>
 #include "leptException.h"
 using namespace jsonCpp;

@@ -75,7 +75,7 @@ namespace jsonCpp {
 			default:
 				if (c < 0x20) {
 					char buffer[7];
-					sprintf_s(buffer, "\\u%04X", c);
+					sprintf(buffer, "\\u%04X", c);
 					res += buffer;
 				}
 				else
@@ -97,7 +97,7 @@ namespace jsonCpp {
 		case TYPE_FALSE:res = "false"; break;
 		case TYPE_NUMBER:
 			char num[32];
-			sprintf_s(num, "%.17g", this->n);
+			sprintf(num, "%.17g", this->n);
 			res = num;
 			break;
 		case TYPE_STRING:res = stringify_string(this->s); break;
@@ -232,8 +232,10 @@ namespace jsonCpp {
 			break;
 		case TYPE_ARRAY:
 			a.std::vector<Value>::~vector();
+			break;
 		case TYPE_OBJECT:
 			o.std::vector<Member>::~vector();
+			break;
 		default:
 			break;
 		}
